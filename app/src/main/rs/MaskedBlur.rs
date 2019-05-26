@@ -1,8 +1,8 @@
 #pragma version(1)
 #pragma rs java_package_name(net.rickvisser.maskedgaussianblur.renderscript)
 
-static const char OFFSET[5] = { 0, 1, 2, 3, 4 };
-static const float WEIGHT[5] = { 0.2734375, 0.21875, 0.109375, 0.03125, 0.00390625 };
+static const char OFFSET[5] = { 0, 1, 3 };
+static const float WEIGHT[5] = { 0.375, 0.25, 0.0625 };
 
 rs_allocation gIn;
 rs_allocation gMask;
@@ -34,7 +34,7 @@ uchar4 RS_KERNEL blur(uchar4 in, uint32_t x, uint32_t y) {
     // Add the current pixel to out.
     out = f4In * WEIGHT[0];
 
-    for (char i = 1; i < 5; i++) {
+    for (char i = 1; i < 3; i++) {
         // Get the defined constants.
         char offset = OFFSET[i];
         float weight = WEIGHT[i] / 2;

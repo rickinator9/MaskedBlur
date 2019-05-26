@@ -71,10 +71,11 @@ class BlurActivity : FragmentActivity(), BlurView {
         val height = Math.round(image.height / 4f)
         val scaledBitmap = Bitmap.createScaledBitmap(image, width, height, false)
 
-        val mask = Bitmap.createBitmap(scaledBitmap)
+        var mask = Bitmap.createBitmap(scaledBitmap)
+        mask = mask.copy(Bitmap.Config.ARGB_8888, true)
         val black = Color.parseColor("#000000")
-        for (x in 0..400) {
-            for (y in 0..400) {
+        for (x in 0 until width/2) {
+            for (y in 0 until height) {
                 mask.setPixel(x, y, black)
             }
         }
