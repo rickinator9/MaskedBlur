@@ -6,11 +6,11 @@ import android.graphics.Color
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.FragmentActivity
-import android.support.v8.renderscript.RenderScript
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_blur.*
 import net.rickvisser.maskedgaussianblur.R
-import net.rickvisser.maskedgaussianblur.renderscript.RenderScriptTask
+import net.rickvisser.maskedgaussianblur.processing.DefaultImageProcessingManager
+import net.rickvisser.maskedgaussianblur.processing.configs.BlurConfig
 
 
 class BlurActivity : FragmentActivity(), BlurView {
@@ -19,11 +19,14 @@ class BlurActivity : FragmentActivity(), BlurView {
     }
 
     private var image: Bitmap? = null
+    private var imageProcessingManager: DefaultImageProcessingManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_blur)
+
+        imageProcessingManager = DefaultImageProcessingManager(this,this)
 
         selectImageButton.setOnClickListener { initiateImageSelectAction() }
     }
@@ -65,21 +68,19 @@ class BlurActivity : FragmentActivity(), BlurView {
     }
 
     private fun applyBlurToImage(image: Bitmap) {
-        val task = RenderScriptTask(RenderScript.create(this), this)
-
         val width = Math.round(image.width / 4f)
         val height = Math.round(image.height / 4f)
-        val scaledBitmap = Bitmap.createScaledBitmap(image, width, height, false)
+        var scaledBitmap = Bitmap.createScaledBitmap(image, width, height, false)
 
-        var mask = Bitmap.createBitmap(scaledBitmap)
-        mask = mask.copy(Bitmap.Config.ARGB_8888, true)
+        var mask = scaledBitmap.copy(Bitmap.Config.ARGB_8888, true)
         val black = Color.parseColor("#000000")
         for (x in 0 until width/2) {
-            for (y in 0 until height) {
+            for (y in 0 until height / 2) {
                 mask.setPixel(x, y, black)
             }
         }
-        task.execute(scaledBitmap, mask)
+
+        imageProcessingManager?.process(BlurConfig(scaledBitmap, mask))
     }
 }
 
