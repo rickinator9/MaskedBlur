@@ -5,47 +5,56 @@ import android.graphics.Bitmap
 import android.support.v8.renderscript.Allocation
 import android.support.v8.renderscript.RenderScript
 import net.rickvisser.maskedgaussianblur.benchmark.Timer
-import net.rickvisser.maskedgaussianblur.processing.configs.BlurConfig
+import net.rickvisser.maskedgaussianblur.processing.configs.CensorConfig
 import net.rickvisser.maskedgaussianblur.processing.configs.ProcessConfig
 import net.rickvisser.maskedgaussianblur.processing.configs.ProcessType
-import net.rickvisser.maskedgaussianblur.renderscript.ScriptC_MaskedBlur
+import net.rickvisser.maskedgaussianblur.renderscript.ScriptC_MaskedCensor
 
 /**
- * Class that creates operations for image processing based on blurring.
+ * Class that creates operations for image processing based on censoring.
  */
-class BlurProcessCreator(context: Context, resultHandler: ProcessResultHandler): ProcessCreator(resultHandler) {
+class CensorProcessCreator(context: Context, resultHandler: ProcessResultHandler): ProcessCreator(resultHandler) {
 
     /** Renderscript object required to do many interactions with the Renderscript API. */
     private val renderscript: RenderScript
 
-    /** Blur script object to communicate with C99 code. */
-    private val script: ScriptC_MaskedBlur
+    /** Censor script object to communicate with C99 code. */
+    private val script: ScriptC_MaskedCensor
 
     init {
         renderscript = RenderScript.create(context)
-        script = ScriptC_MaskedBlur(renderscript)
+        script = ScriptC_MaskedCensor(renderscript)
     }
 
+    /**
+     * Creates a operation based on the specified config.
+     *
+     * @param config The config that defines the parameters of the operation.
+     * @return A Runnable operation for image processing if this config can be handled by the object.
+     * Null otherwise.
+     */
     override fun create(config: ProcessConfig): Runnable? {
         // Make sure that the config is of the correct type.
-        if (config.type != ProcessType.BLUR) return null
+        if (config.type != ProcessType.CENSOR) return null
 
         // Get the config variables.
-        val blurProcessConfig = config as BlurConfig
-        val image = blurProcessConfig.image
-        val mask = blurProcessConfig.mask
+        val censorProcessConfig = config as CensorConfig
+        val image = censorProcessConfig.image
+        val censor = censorProcessConfig.censor
+        val mask = censorProcessConfig.mask
 
-        return BlurRunnable(renderscript, script, image, mask, resultHandler)
+        return CensorRunnable(renderscript, script, image, censor, mask, resultHandler)
     }
 }
 
 /**
- * Class to perform a blur operation.
+ * Class to perform a censor operation.
  */
-private class BlurRunnable(
+private class CensorRunnable(
         private val rs: RenderScript,
-        private val script: ScriptC_MaskedBlur,
+        private val script: ScriptC_MaskedCensor,
         private val image: Bitmap,
+        private val censor: Bitmap,
         private val mask: Bitmap,
         private val resultHandler: ProcessResultHandler
 ) : Runnable {
@@ -56,11 +65,12 @@ private class BlurRunnable(
 
         // Define the image to use as input.
         val inImage = image
-        val width = inImage.width
-        val height = inImage.height
 
         // Create an allocation from the input image.
         var inAlloc = Allocation.createFromBitmap(rs, inImage)
+
+        // Create an allocation from the censor image.
+        val censorAlloc = Allocation.createFromBitmap(rs, censor)
 
         // Create an allocation from the mask.
         val maskAlloc = Allocation.createFromBitmap(rs, mask)
@@ -70,18 +80,13 @@ private class BlurRunnable(
 
         timer.recordTime("Allocation initialization")
 
+        script._gSampled = censorAlloc
         script._gMask = maskAlloc
-        script._gWidth = width.toLong()
-        script._gHeight = height.toLong()
 
         timer.recordTime("Script assignation")
 
-        // Run the script a few times to make the image blurry.
-        for (i in 0..9) {
-            val tmp = runScript(script, inAlloc, outAlloc)
-            outAlloc = inAlloc
-            inAlloc = tmp
-        }
+        // Run the script once to apply the censor.
+        outAlloc = runScript(script, inAlloc, outAlloc)
 
         timer.recordTime("Blur loop")
 
@@ -94,7 +99,7 @@ private class BlurRunnable(
         resultHandler.transferImage(outImage)
     }
 
-    private fun runScript(script: ScriptC_MaskedBlur, aIn: Allocation, aOut: Allocation): Allocation {
+    private fun runScript(script: ScriptC_MaskedCensor, aIn: Allocation, aOut: Allocation): Allocation {
         script._gIn = aIn
         script.forEach_blur(aIn, aOut)
 

@@ -4,11 +4,10 @@ import android.graphics.Bitmap
 import android.os.AsyncTask
 import android.support.v8.renderscript.Allocation
 import android.support.v8.renderscript.RenderScript
-import android.util.Log
 import net.rickvisser.maskedgaussianblur.benchmark.Timer
-import net.rickvisser.maskedgaussianblur.ui.activity.BlurView
+import net.rickvisser.maskedgaussianblur.ui.activity.ImageProcessingView
 
-class RenderScriptTask(private val rs: RenderScript, private val view: BlurView) : AsyncTask<Bitmap, Float, Bitmap>() {
+class RenderScriptTask(private val rs: RenderScript, private val view: ImageProcessingView) : AsyncTask<Bitmap, Float, Bitmap>() {
     companion object {
         private var script: ScriptC_MaskedBlur? = null
     }

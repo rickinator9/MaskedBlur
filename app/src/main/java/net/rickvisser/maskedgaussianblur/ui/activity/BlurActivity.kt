@@ -10,15 +10,16 @@ import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_blur.*
 import net.rickvisser.maskedgaussianblur.R
 import net.rickvisser.maskedgaussianblur.processing.DefaultImageProcessingManager
-import net.rickvisser.maskedgaussianblur.processing.configs.BlurConfig
+import net.rickvisser.maskedgaussianblur.processing.configs.CensorConfig
 
 
-class BlurActivity : FragmentActivity(), BlurView {
+class BlurActivity : FragmentActivity(), ImageProcessingView {
     companion object {
         val PICK_IMAGE = 1234
     }
 
     private var image: Bitmap? = null
+    private var sampledImage: Bitmap? = null
     private var imageProcessingManager: DefaultImageProcessingManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +49,14 @@ class BlurActivity : FragmentActivity(), BlurView {
         image = MediaStore.Images.Media.getBitmap(contentResolver, uri)
 
         // Apply blur and set it to the image view.
-        image?.let { applyBlurToImage(it) }
+        image?.let {
+            // Make a censored version of the image.
+            val scalar = 32
+            val scaledDownImage = Bitmap.createScaledBitmap(it, it.width / scalar, it.height / scalar, false)
+            sampledImage = Bitmap.createScaledBitmap(scaledDownImage, scaledDownImage.width * scalar, scaledDownImage.height * scalar, false)
+
+            applyBlurToImage(it)
+        }
     }
 
     private fun initiateImageSelectAction() {
@@ -63,8 +71,8 @@ class BlurActivity : FragmentActivity(), BlurView {
         startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE)
     }
 
-    override fun showImage(bitmap: Bitmap) {
-        imageView.setImageBitmap(bitmap)
+    override fun showImage(image: Bitmap) {
+        imageView.setImageBitmap(image)
     }
 
     private fun applyBlurToImage(image: Bitmap) {
@@ -80,10 +88,12 @@ class BlurActivity : FragmentActivity(), BlurView {
             }
         }
 
-        imageProcessingManager?.process(BlurConfig(scaledBitmap, mask))
+        val censor = Bitmap.createScaledBitmap(sampledImage, width, height, false)
+
+        imageProcessingManager?.process(CensorConfig(scaledBitmap, censor, mask))
     }
 }
 
-interface BlurView {
+interface ImageProcessingView {
     fun showImage(image: Bitmap)
 }
